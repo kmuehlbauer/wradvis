@@ -124,11 +124,36 @@ class RadolanCanvas(SceneCanvas):
         # print FPS to console, vispy SceneCanvas internal function
         self.measure_fps()
 
+    def create_marker(self, id, pos, name):
+
+        marker = Markers(parent=self.view.scene)
+        marker.transform = STTransform(translate=(0, 0, -10))
+        marker.interactive = True
+
+        # add id
+        marker.unfreeze()
+        marker.id = id
+        marker.freeze()
+
+        marker.set_data(pos=pos[np.newaxis],
+                        symbol="disc",
+                        edge_color="blue",
+                        face_color='red',
+                        size=10)
+
+        # initialize Markertext
+        text = Text(text=name,
+                     pos=pos,
+                     font_size=15,
+                     anchor_x='right',
+                     anchor_y='top',
+                     parent=self.view.scene)
+
+        return marker, text
+
     def create_cities(self):
-        # initialize city markers
-        self.markers = Markers(parent=self.view.scene)
-        # move z-direction a bit negative (means nearer to the viewer)
-        self.markers.transform = STTransform(translate=(0, 0, -10))
+
+        self.selected = None
 
         cities = utils.get_cities_coords()
         cnameList = []
@@ -142,19 +167,15 @@ class RadolanCanvas(SceneCanvas):
         pos_scene[:] = ccoord - self.r0
 
         # initialize Markers
-        self.markers.set_data(pos=pos_scene,
-                              symbol="disc",
-                              edge_color="blue",
-                              face_color='red',
-                              size=10)
-
-        # initialize Markertext
-        self.text = Text(text=cnameList,
-                         pos=pos_scene,
-                         font_size=15,
-                         anchor_x = 'right',
-                         anchor_y = 'top',
-                         parent=self.view.scene)
+        self.markers = []
+        self.text = []
+        i = 0
+        for p, n in zip(pos_scene, cnameList):
+            print(i, p, n)
+            m, t = self.create_marker(i, p, n)
+            self.markers.append(m)
+            self.text.append(t)
+            i += 1
 
     def on_mouse_move(self, event):
         point = self.scene.node_transform(self.image).map(event.pos)[:2]
@@ -162,6 +183,18 @@ class RadolanCanvas(SceneCanvas):
         # emit signal
         self.mouse_moved()
 
+    def on_mouse_press(self, event):
+        self.view.interactive = False
 
+        for v in self.visuals_at(event.pos, radius=30):
+            if isinstance(v, Markers):
+                if self.selected is not None:
+                    self.selected.symbol = 'disc'
+                    if self.selected.id == v.id:
+                        self.selected = None
+                        break
+                self.selected = v
+                self.selected.symbol = 'star'
+                print("Marker ID:", self.selected.id)
 
-
+        self.view.interactive = True
