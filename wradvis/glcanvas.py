@@ -11,7 +11,7 @@ from vispy.scene import SceneCanvas
 from vispy.util.event import EventEmitter
 from vispy.visuals.transforms import STTransform
 from vispy.scene.cameras import PanZoomCamera
-from vispy.scene.visuals import Image, ColorBar, Markers, Text
+from vispy.scene.visuals import Image, ColorBar, Markers, Text, Rectangle, Ellipse
 from vispy.geometry import Rect
 
 from wradvis import utils
@@ -75,6 +75,7 @@ class RadolanCanvas(SceneCanvas):
 
         # add grid central widget
         self.grid = self.central_widget.add_grid()
+        #self.view = self.central_widget.add_view()
 
         # add view to grid
         self.view = self.grid.add_view(row=0, col=0)
@@ -108,8 +109,7 @@ class RadolanCanvas(SceneCanvas):
         # get radolan ll point coodinate into self.r0
         self.r0 = utils.get_radolan_origin()
 
-        # create cities (Markers and Text Visuals
-        self.create_cities()
+
 
         # create PanZoomCamera
         self.cam = PanZoomCamera(name="PanZoom",
@@ -120,6 +120,10 @@ class RadolanCanvas(SceneCanvas):
         self.view.camera = self.cam
 
         self._mouse_position = None
+
+        # create cities (Markers and Text Visuals
+        self.create_cities()
+        self.create_polygons()
         self.freeze()
         # print FPS to console, vispy SceneCanvas internal function
         self.measure_fps()
@@ -150,6 +154,56 @@ class RadolanCanvas(SceneCanvas):
                      parent=self.view.scene)
 
         return marker, text
+
+
+    def create_polygon(self, id, coords, name):
+        pass
+
+
+
+
+    def create_polygons(self):
+        rect = Rectangle(center=(200, 200, 0), height=200.,
+                                       width=300.,
+                                       radius=[30., 30., 0., 0.],
+                                       color=(0.5, 0.5, 0.2, 1),
+                                       border_width=3,
+                                       border_color='white', parent=self.view.scene)
+
+        ellipse = Ellipse(center=(200, 200, 0), radius=(100, 150),
+                                        color=(0.2, 0.2, 0.8, 1),
+                                        border_color=(1, 1, 1, 1),
+                                        border_width=3,
+                                        start_angle=180., span_angle=150.,
+                                        parent=self.view.scene)
+        #rect.transforms = STTransform(translate=(0, 0, -5))
+
+        #radolan = wrl.georef.create_osr('dwd-radolan')
+        #path = '/automount/db01/python/data'
+        #filename = 'ADM/germany/vg250_0101.gk3.shape.ebenen/vg250_ebenen/vg250_bld.shp'
+        #dataset, inLayer = wrl.io.open_shape(os.path.join(path, filename))
+        #borders, keys = wrl.georef.get_shape_coordinates(inLayer,
+        #                                                 dest_srs=radolan)
+
+
+        # print(borders[0], keys)
+        # for brd in borders:
+        #     if brd.ndim == 2:
+        #         print(brd.shape)
+        #         pos_scene = np.zeros((brd.shape[0], 2), dtype=np.float32)
+        #         pos_scene[:] = brd - self.r0
+        #         print(pos_scene.shape)
+        #         print(pos_scene)
+        #
+        #         self.poly = Polygon([(0.4, 0.2), ],
+        #                             color='red', border_color='white')
+        #                             #border_width=3,
+        #                             #parent=self.view.scene)
+        #         self.poly.transform = STTransform(translate=(0, 0, -5))
+        #         self.poly.interactive = True
+        #         break
+        #pass
+
 
     def create_cities(self):
 
