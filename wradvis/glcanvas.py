@@ -9,13 +9,64 @@ import numpy as np
 
 from vispy.scene import SceneCanvas
 from vispy.util.event import EventEmitter
+from vispy.visuals.shaders import Function, FunctionChain
 from vispy.visuals.transforms import STTransform
 from vispy.scene.cameras import PanZoomCamera
 from vispy.scene.visuals import Image, ColorBar, Markers, Text
 from vispy.geometry import Rect
+from vispy.color import get_colormap
 
 from wradvis import utils
 
+
+_c2l = 'float cmap(vec4 color) { return (color.r + color.g + color.b) / 3.; }'
+
+
+class ContourFilter(object):
+    def __init__(self, level=2., cmap='cubehelix'):
+        self.fshader = Function("""
+            void isoline() {
+                if ($isolevel <= 1) {
+                    return;
+                }
+                // luminance
+                float lmod = floor(gl_FragColor.r * $isolevel + 0.15) / $isolevel;
+                vec4 lcol = vec4(lmod, lmod, lmod, 1.0);
+                gl_FragColor = $color_transform(lcol);
+            }
+        """)
+        self.level = level
+        self.cmap = cmap
+        self.isoline_expr = self.fshader()
+
+    @property
+    def level(self):
+        return self._level
+
+    @level.setter
+    def level(self, l):
+        if l <= 0:
+            l = 0
+        self._level = l
+        self.fshader['isolevel'] = l
+
+    @property
+    def cmap(self):
+        return self._cmap
+
+    @cmap.setter
+    def cmap(self, cm):
+        self._cmap = get_colormap(cm)
+        self.fshader['color_transform'] = FunctionChain(None, [Function(_c2l),
+                                       Function(self._cmap.glsl_map)])
+
+    def _attach(self, visual):
+        hook = visual._get_hook('frag', 'post')
+        hook.add(self.isoline_expr)
+
+
+level = 11
+iso = ContourFilter(level=level)
 
 class ColorbarCanvas(SceneCanvas):
 
@@ -37,7 +88,7 @@ class ColorbarCanvas(SceneCanvas):
 
         # initialize colormap, we take cubehelix for now
         # this is the most nice colormap for radar in vispy
-        cmap = 'cubehelix'
+        cmap = 'grays'
 
         # initialize ColorBar Visual, add to view
         self.cbar = ColorBar(center_pos=(0, 10),
@@ -49,6 +100,8 @@ class ColorbarCanvas(SceneCanvas):
                              border_width=1,
                              border_color='white',
                              parent=self.view.scene)
+
+        self.cbar.attach(iso)
 
         # add transform to Colorbar
         self.cbar.transform = STTransform(scale=(1, 1, 1),
@@ -91,15 +144,17 @@ class RadolanCanvas(SceneCanvas):
 
         # initialize colormap, we take cubehelix for now
         # this is the most nice colormap for radar in vispy
-        cmap = 'cubehelix'
+        cmap = 'grays'
 
         # initialize Image Visual with img_data
         # add to view
         self.image = Image(img_data,
                            method='subdivide',
-                           #interpolation='bicubic',
+                           interpolation='bicubic',
                            cmap=cmap,
                            parent=self.view.scene)
+
+        self.image.attach(iso)
 
         # add transform to Image
         # (mostly positioning within canvas)

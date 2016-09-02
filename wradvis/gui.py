@@ -18,6 +18,7 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
 
+        print(QtCore.QT_VERSION_STR)
         self.resize(825, 500)
         self.setWindowTitle('RADOLAN Viewer')
         self._need_canvas_refresh = False
