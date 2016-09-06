@@ -8,7 +8,8 @@
 from PyQt4 import QtGui, QtCore
 
 # other wradvis imports
-from wradvis.glcanvas import RadolanCanvas, ColorbarCanvas
+from wradvis.glcanvas import RadolanWidget, RadolanCanvas, ColorbarCanvas
+from wradvis.mplcanvas import MplWidget
 from wradvis.properties import PropertiesWidget
 from wradvis import utils
 
@@ -26,17 +27,16 @@ class MainWindow(QtGui.QMainWindow):
         self.timer.timeout.connect(self.reload)
 
         # initialize RadolanCanvas
-        self.canvas = RadolanCanvas()
-        self.canvas.create_native()
-        self.canvas.native.setParent(self)
+        self.rcanvas = RadolanWidget()
+        self.canvas = self.rcanvas
 
-        # need some tracer for the mouse position
-        self.canvas.mouse_moved.connect(self.mouse_moved)
+        # initialize MplWidget
+        self.mcanvas = MplWidget()
 
-        # add ColorbarCanvas
-        self.canvas_cb = ColorbarCanvas()
-        self.canvas_cb.create_native()
-        self.canvas_cb.native.setParent(self)
+        # canvas swapper
+        self.swapper = []
+        self.swapper.append(self.rcanvas)
+        self.swapper.append(self.mcanvas)
 
         # add PropertiesWidget
         self.props = PropertiesWidget()
@@ -45,11 +45,12 @@ class MainWindow(QtGui.QMainWindow):
         self.props.signal_speed_changed.connect(self.speed)
 
         # add Horizontal Splitter andd the three widgets
-        splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
-        splitter.addWidget(self.props)
-        splitter.addWidget(self.canvas.native)
-        splitter.addWidget(self.canvas_cb.native)
-        self.setCentralWidget(splitter)
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Horizontal)
+        self.splitter.addWidget(self.props)
+        self.splitter.addWidget(self.swapper[0])#.native)
+        self.splitter.addWidget(self.swapper[1])
+        self.swapper[1].hide()
+        self.setCentralWidget(self.splitter)
 
         # finish init
         self.slider_changed()
@@ -72,13 +73,24 @@ class MainWindow(QtGui.QMainWindow):
     def slider_changed(self):
         self.data, self.meta = utils.read_radolan(self.props.filelist[self.props.actualFrame])
         scantime = self.meta['datetime']
+        print(scantime)
+
         self.props.sliderLabel.setText(scantime.strftime("%H:%M"))
         self.props.date.setText(scantime.strftime("%Y-%m-%d"))
-        self.canvas.image.set_data(self.data)
-        self.canvas.update()
+        self.canvas.set_data(self.data)
+
 
     def mouse_moved(self, event):
         self.props.show_mouse(self.canvas._mouse_position)
+
+    def keyPressEvent(self, event):
+        #QtGui.QMessageBox.information(None, "Received Key Press Event!!",
+        #                        "You Pressed: " + event.text())
+        if event.text() == 'c':
+            self.swapper = self.swapper[::-1]
+            self.canvas = self.swapper[0]
+            self.swapper[0].show()
+            self.swapper[1].hide()
 
 
 def start(arg):
